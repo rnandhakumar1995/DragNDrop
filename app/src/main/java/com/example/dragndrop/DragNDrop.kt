@@ -6,22 +6,25 @@ import android.view.DragEvent
 import android.view.View
 
 sealed class ClipDataContent {
-    open class FileClipData(val fileData: Uri) : ClipDataContent()
+    open class FileClipData(val data: Uri) : ClipDataContent()
     data class ImageClipData(val imageData: Uri) : FileClipData(imageData)
     open class TextClipData(val data: String) : ClipDataContent()
-    data class HtmlClipData(val htmlData: String): TextClipData(htmlData)
+    data class HtmlClipData(val htmlData: String) : TextClipData(htmlData)
 }
 
 fun DragEvent.toClipDataContents(): Array<ClipDataContent?> {
     return Array(clipData.itemCount) { index ->
-        val item =  clipData.getItemAt(index)
+        val item = clipData.getItemAt(index)
         if (clipDescription.hasMimeType("image/*")) {
             return@Array ClipDataContent.ImageClipData(item.uri)
         } else if (clipDescription.hasMimeType("text/plain")) {
-            return@Array ClipDataContent.TextClipData(item.text.toString())
-        } else if(clipDescription.hasMimeType("text/html")){
+            return@Array if (item.text != null)
+                ClipDataContent.TextClipData(item.text.toString())
+            else
+                ClipDataContent.FileClipData(item.uri)
+        } else if (clipDescription.hasMimeType("text/html")) {
             return@Array ClipDataContent.HtmlClipData(item.htmlText)
-        }else if (item.uri != null) {
+        } else if (item.uri != null) {
             return@Array ClipDataContent.FileClipData(item.uri)
         }
         return@Array null
@@ -29,15 +32,15 @@ fun DragEvent.toClipDataContents(): Array<ClipDataContent?> {
 }
 
 abstract class DragEvents {
-    open fun onDragStarted(event: DragEvent) {}
-    fun onDragLocation(event: DragEvent) {}
-    fun onDragEntered(event: DragEvent) {}
-    fun onDragExited(event: DragEvent) {}
-    fun onDragEnded(event: DragEvent) {}
+    open fun onDragStarted(event: DragEvent) = Unit
+    fun onDragLocation(event: DragEvent) = Unit
+    fun onDragEntered(event: DragEvent) = Unit
+    fun onDragExited(event: DragEvent) = Unit
+    open fun onDragEnded(event: DragEvent) = Unit
     fun onDrop(event: DragEvent, activity: Activity) {
         val dragAndDropPermissions = activity.requestDragAndDropPermissions(event)
         onClipDataDropped(event)
-        dragAndDropPermissions.release()
+        dragAndDropPermissions?.release()
     }
 
     abstract fun onClipDataDropped(event: DragEvent)
